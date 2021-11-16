@@ -9,11 +9,11 @@ terraform {
   }
 }
 
-resource "aws_db_instance" "example" {
-  engine = "mysql"
-  allocated_storage = 10
+module "mysql" {
+  source = "../../../modules/data-stores/mysql"
+  db_name = "example_database"
+  db_username = "admin"
   instance_class = "db.t2.micro"
-  name = "example_database"
-  username = "admin"
-  password = var.db_password
+  allocated_storage = 10
+  db_password = var.db_password
 }
