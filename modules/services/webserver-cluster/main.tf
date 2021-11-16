@@ -1,22 +1,11 @@
-provider "aws" {
-  region = "us-east-1"
-}
-
-terraform {
-  backend "s3" {
-    encrypt = true
-    region = "us-east-1"
-  }
-}
-
 data "aws_availability_zones" "all" {}
 
 data "terraform_remote_state" "db" {
   backend = "s3"
 
   config = {
-    bucket = "terraform-up-and-running-state-dms"
-    key = "stage/data-stores/mysql/terraform.tfstate"
+    bucket = var.db_remote_state_bucket
+    key = var.db_remote_state_key
     region = "us-east-1"
   }
 }
@@ -33,7 +22,7 @@ data "template_file" "user_data" {
 
 resource "aws_launch_configuration" "example" {
   image_id = "ami-40d28157"
-  instance_type = "t2.micro"
+  instance_type = var.instance_type
   security_groups = [aws_security_group.instance.id]
 
   user_data = data.template_file.user_data.rendered
@@ -44,7 +33,7 @@ resource "aws_launch_configuration" "example" {
 }
 
 resource "aws_security_group" "instance" {
-  name = "terraform-example-instance"
+  name = "${var.cluster_name}-instance"
 
   ingress {
     from_port = var.server_port
@@ -59,7 +48,7 @@ resource "aws_security_group" "instance" {
 }
 
 resource "aws_security_group" "elb" {
-  name = "terraform-example-elb"
+  name = "${var.cluster_name}-elb"
   ingress {
     from_port = var.elb_port
     protocol = "tcp"
@@ -82,18 +71,18 @@ resource "aws_autoscaling_group" "example" {
   load_balancers = [aws_elb.example.name]
   health_check_type = "ELB"
 
-  max_size = 10
-  min_size = 2
+  max_size = var.max_size
+  min_size = var.min_size
 
   tag {
     key = "Name"
     propagate_at_launch = true
-    value = "terraform-asg-example"
+    value = "${var.cluster_name}-asg"
   }
 }
 
 resource "aws_elb" "example" {
-  name = "terraform-asg-example"
+  name = "${var.cluster_name}-asg"
   availability_zones = data.aws_availability_zones.all.names
   security_groups = [aws_security_group.elb.id]
 
