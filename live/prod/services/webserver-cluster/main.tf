@@ -18,5 +18,6 @@ module "webserver_cluster" {
   instance_type = "m4.large"
   min_size = 2
   max_size = 10
-  enable_autoscaling = true
+  enable_autoscaling = 1
+  enable_new_user_data = 0
 }

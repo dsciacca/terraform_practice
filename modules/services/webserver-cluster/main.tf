@@ -11,6 +11,7 @@ data "terraform_remote_state" "db" {
 }
 
 data "template_file" "user_data" {
+  count = 1 - var.enable_new_user_data
   template = file("${path.module}/user-data.sh")
 
   vars = {
@@ -20,12 +21,21 @@ data "template_file" "user_data" {
   }
 }
 
+data "template_file" "user_data_new" {
+  count = var.enable_new_user_data
+  template = file("${path.module}/user-data-new.sh")
+
+  vars = {
+    server_port = var.server_port
+  }
+}
+
 resource "aws_launch_configuration" "example" {
   image_id = "ami-40d28157"
   instance_type = var.instance_type
   security_groups = [aws_security_group.instance.id]
 
-  user_data = data.template_file.user_data.rendered
+  user_data = element(concat(data.template_file.user_data.*.rendered, data.template_file.user_data_new.*.rendered), 0)
 
   lifecycle {
     create_before_destroy = true
@@ -127,4 +137,35 @@ resource "aws_elb" "example" {
     timeout = 3
     unhealthy_threshold = 2
   }
+}
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu_utilization" {
+  alarm_name = "${var.cluster_name}-high-cpu-utilization"
+  namespace = "AWS/EC2"
+  metric_name = "CPUUtilization"
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.example.name
+  }
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods = 1
+  period = 300
+  statistic = "Average"
+  threshold = 90
+  unit = "Percent"
+}
+
+resource "aws_cloudwatch_metric_alarm" "low_cpu_credit_balance" {
+  count = format("%.1s", var.instance_type) == "t" ? 1 : 0
+  alarm_name = "${var.cluster_name}-low-cpu-credit-balance"
+  namespace = "AWS/EC2"
+  metric_name = "CPUCreditBalance"
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.example.name
+  }
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods = 1
+  period = 300
+  statistic = "Minimum"
+  threshold = 10
+  unit = "Count"
 }
