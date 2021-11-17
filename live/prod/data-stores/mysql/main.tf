@@ -10,7 +10,7 @@ terraform {
 }
 
 module "mysql" {
-  source = "../../../modules/data-stores/mysql"
+  source = "../../../../modules/data-stores/mysql"
   db_name = "example_database_prod"
   db_username = "admin"
   instance_class = "db.t2.micro"
