@@ -12,6 +12,8 @@ terraform {
 module "webserver_cluster" {
   source = "../../../../modules/services/webserver-cluster"
 
+  ami = "ami-40d28157"
+  server_text = "foo bar"
   cluster_name = "webservers-stage"
   db_remote_state_bucket = "terraform-up-and-running-state-dms"
   db_remote_state_key = "stage/data-stores/mysql/terraform.tfstate"
@@ -19,7 +21,6 @@ module "webserver_cluster" {
   max_size = 10
   min_size = 2
   enable_autoscaling = 0
-  enable_new_user_data = 1
 }
 
 resource "aws_security_group_rule" "allow_testing_inbound" {
