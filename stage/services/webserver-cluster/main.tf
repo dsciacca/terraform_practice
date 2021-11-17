@@ -19,3 +19,12 @@ module "webserver_cluster" {
   max_size = 10
   min_size = 2
 }
+
+resource "aws_security_group_rule" "allow_testing_inbound" {
+  from_port = 12345
+  protocol = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  security_group_id = module.webserver_cluster.elb_security_group_id
+  to_port = 12345
+  type = "ingress"
+}

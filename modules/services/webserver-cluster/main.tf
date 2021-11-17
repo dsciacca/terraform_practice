@@ -11,7 +11,7 @@ data "terraform_remote_state" "db" {
 }
 
 data "template_file" "user_data" {
-  template = file("user-data.sh")
+  template = file("${path.module}/user-data.sh")
 
   vars = {
     server_port = var.server_port
@@ -35,33 +35,40 @@ resource "aws_launch_configuration" "example" {
 resource "aws_security_group" "instance" {
   name = "${var.cluster_name}-instance"
 
-  ingress {
-    from_port = var.server_port
-    to_port = var.server_port
-    protocol  = "tcp"
-    cidr_blocks = var.cidr_range
-  }
-
   lifecycle {
     create_before_destroy = true
   }
 }
 
+resource "aws_security_group_rule" "allow_http_inbound_instance" {
+  type = "ingress"
+  from_port = var.server_port
+  to_port = var.server_port
+  protocol  = "tcp"
+  cidr_blocks = var.cidr_range
+  security_group_id = aws_security_group.instance.id
+}
+
 resource "aws_security_group" "elb" {
   name = "${var.cluster_name}-elb"
-  ingress {
-    from_port = var.elb_port
-    protocol = "tcp"
-    to_port = var.elb_port
-    cidr_blocks = var.cidr_range
-  }
+}
 
-  egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_blocks = var.cidr_range
-  }
+resource "aws_security_group_rule" "allow_http_inbound_elb" {
+  type = "ingress"
+  security_group_id = aws_security_group.elb.id
+  from_port = var.elb_port
+  protocol = "tcp"
+  to_port = var.elb_port
+  cidr_blocks = var.cidr_range
+}
+
+resource "aws_security_group_rule" "allow_all_outbound" {
+  type = "egress"
+  from_port = 0
+  to_port = 0
+  protocol = "-1"
+  cidr_blocks = var.cidr_range
+  security_group_id = aws_security_group.elb.id
 }
 
 resource "aws_autoscaling_group" "example" {
